@@ -195,10 +195,10 @@ public final class MainActivity extends Activity {
             drawGear(canvas);
 
             fillRound(canvas, 98, 194, 102, 246, 2, RED);
-            text(canvas, tab == 0 ? "ТВОИ ПРИЛОЖЕНИЯ" : "ИСТОЧНИКИ СИГНАЛА",
+            text(canvas, tab == 0 ? "ПРИЛОЖУХИ" : "АУТПУТЫ",
                     122, 226, 30, WHITE, true);
-            text(canvas, tab == 0 ? "Пять важных вещей. Ничего лишнего."
-                    : "Выбери вход — и смотри.", 122, 258, 17, MUTED, false);
+            text(canvas, tab == 0 ? "ПО ФАКТУ: ТОЛЬКО ВПН И ЮТУБ."
+                    : "HDMI1 - PS4.", 122, 258, 17, MUTED, false);
 
             int count = tab == 0 ? 5 : 4;
             float width = tab == 0 ? 207 : 246;
