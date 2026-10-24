@@ -319,6 +319,7 @@ public final class MainActivity extends Activity {
 
         private void drawSettings(Canvas c) {
             c.drawColor(0x6906030a);
+            fillRound(c, 760, 140, 1195, 397, 28, 0xff150d19);
             glass(c, 760, 140, 1195, 397, 28, true);
             fillCircle(c, 797, 180, 6, 0xffff5a79);
             text(c, "Настройки", 820, 187, 25, WHITE, true);
