@@ -5,6 +5,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
@@ -12,7 +14,6 @@ import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Typeface;
-import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
@@ -22,7 +23,13 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
+import java.io.IOException;
+import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /** A single-view TV launcher: no WebView, network requests, analytics or background services. */
 public final class MainActivity extends Activity {
@@ -32,6 +39,10 @@ public final class MainActivity extends Activity {
         {"Браузер", "com.yandex.browser.tv", "Я"},
         {"YouTube", "com.yandex.tv.ytplayer", "▶"},
         {"AmneziaVPN", "org.amnezia.vpn", "A"}
+    };
+    private static final String[] APP_ART = {
+        "app_icons/kinopoisk.png", "app_icons/vk_video.png", "app_icons/browser.png",
+        "app_icons/youtube.png", "app_icons/amnezia.png"
     };
     private PanelView panel;
     private final String[] hdmiIds = new String[3];
@@ -50,7 +61,12 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         refreshInputs();
-        if (panel != null) panel.invalidate();
+        if (panel != null) panel.startClock();
+    }
+
+    @Override protected void onPause() {
+        if (panel != null) panel.stopClock();
+        super.onPause();
     }
 
     private void refreshInputs() {
@@ -138,7 +154,19 @@ public final class MainActivity extends Activity {
         private static final int MUTED = 0xffbda7ad;
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF box = new RectF();
-        private final Drawable[] appIcons = new Drawable[APPS.length];
+        private final Bitmap[] appArt = new Bitmap[APPS.length];
+        private final RectF artBox = new RectF();
+        private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        private final SimpleDateFormat dateFormat = new SimpleDateFormat("d MMMM yyyy", new Locale("ru", "RU"));
+        private String clockText = "";
+        private String dateText = "";
+        private final Runnable clockTick = new Runnable() {
+            @Override public void run() {
+                refreshClock();
+                invalidate();
+                scheduleClock();
+            }
+        };
         private int tab = 0;
         // 0/1: tabs, 2: settings icon, 3+: content cards.
         private int focus = 3;
@@ -149,11 +177,38 @@ public final class MainActivity extends Activity {
             super(context);
             setFocusable(true);
             setFocusableInTouchMode(true);
-            for (int i = 0; i < APPS.length; i++) {
-                try { appIcons[i] = getPackageManager().getApplicationIcon(APPS[i][1]); }
-                catch (PackageManager.NameNotFoundException ignored) { }
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 4;
+            for (int i = 0; i < APP_ART.length; i++) {
+                try (InputStream image = getAssets().open(APP_ART[i])) {
+                    appArt[i] = BitmapFactory.decodeStream(image, null, options);
+                } catch (IOException ignored) { /* App names remain usable without artwork. */ }
             }
+            refreshClock();
             requestFocus();
+        }
+
+        void startClock() {
+            removeCallbacks(clockTick);
+            refreshClock();
+            invalidate();
+            scheduleClock();
+        }
+
+        void stopClock() { removeCallbacks(clockTick); }
+
+        private void refreshClock() {
+            Date now = new Date();
+            TimeZone zone = TimeZone.getDefault();
+            timeFormat.setTimeZone(zone);
+            dateFormat.setTimeZone(zone);
+            clockText = timeFormat.format(now);
+            dateText = dateFormat.format(now);
+        }
+
+        private void scheduleClock() {
+            long delay = 60000L - System.currentTimeMillis() % 60000L + 100L;
+            postDelayed(clockTick, delay);
         }
 
         boolean isOutputs() { return tab == 1; }
@@ -196,11 +251,10 @@ public final class MainActivity extends Activity {
 
         private void drawHeader(Canvas c) {
             glass(c, 66, 42, 1214, 130, 28, false);
-            radial(c, 103, 85, 31, 0xffff456b, 0x00ff456b, 72, 54, 134, 116);
-            strokeCircle(c, 103, 85, 24, 0x95ffc4d0, 1.4f);
-            fillCircle(c, 97, 77, 5, 0xdfffffff);
-            text(c, "RED PANEL", 142, 87, 22, WHITE, true);
-            text(c, "LIQUID EDITION", 143, 106, 10, 0xffd78396, false);
+            text(c, dateText, 92, 84, 21, WHITE, true);
+            text(c, clockText, 93, 107, 13, 0xffd5b8c3, false);
+            fillCircle(c, 144, 103, 2, 0xffff6684);
+            text(c, "Offensive94", 156, 107, 12, 0xffae8494, false);
 
             drawTab(c, "Приложения", 453, 626, 0);
             drawTab(c, "Выходы", 640, 785, 1);
@@ -235,55 +289,49 @@ public final class MainActivity extends Activity {
         }
 
         private void drawHero(Canvas c) {
+            if (tab != 0) return;
             fillRound(c, 87, 181, 91, 242, 2, 0xffff5b78);
-            text(c, tab == 0 ? "ТВОИ ПРИЛОЖЕНИЯ" : "ИСТОЧНИКИ СИГНАЛА",
-                    111, 207, 34, WHITE, true);
-            text(c, tab == 0 ? "Всё важное — в одном касании."
-                    : "Выбери HDMI или открой эфирное ТВ.",
-                    113, 238, 17, 0xffc3a5af, false);
-            glass(c, 1001, 188, 1194, 232, 18, false);
-            fillCircle(c, 1024, 210, 4, 0xffff5b78);
-            text(c, tab == 0 ? "5 ПРИЛОЖЕНИЙ" : "4 ИСТОЧНИКА",
-                    1040, 216, 13, 0xffedd0d7, true);
+            text(c, clockText, 112, 228, 53, WHITE, true);
         }
 
         private void drawCard(Canvas c, float x, float y, float w, float h, int i) {
             boolean selected = focus == i + 3 && !settingsOpen;
             glass(c, x, y, x + w, y + h, 25, selected);
-            text(c, String.format(java.util.Locale.ROOT, "%02d", i + 1),
-                    x + 20, y + 34, 13, selected ? 0xffff9aae : 0xff8d7180, true);
-            if (selected) {
-                fillCircle(c, x + w - 27, y + 28, 5, 0xffff6482);
-                strokeCircle(c, x + w - 27, y + 28, 9, 0x80ff6482, 1f);
-            } else {
-                fillCircle(c, x + w - 27, y + 28, 3, 0x70f5a7b8);
+            if (tab == 1) {
+                text(c, String.format(Locale.ROOT, "%02d", i + 1),
+                        x + 20, y + 34, 13, selected ? 0xffff9aae : 0xff8d7180, true);
+                if (selected) {
+                    fillCircle(c, x + w - 27, y + 28, 5, 0xffff6482);
+                    strokeCircle(c, x + w - 27, y + 28, 9, 0x80ff6482, 1f);
+                } else {
+                    fillCircle(c, x + w - 27, y + 28, 3, 0x70f5a7b8);
+                }
             }
             if (tab == 0) drawAppContent(c, x, y, w, i, selected);
             else drawSourceContent(c, x, y, w, i, selected);
-            fillRound(c, x + 20, y + h - 39, x + w - 20, y + h - 38,
+            if (tab == 1) fillRound(c, x + 20, y + h - 39, x + w - 20, y + h - 38,
                     0, selected ? 0x78ff819b : 0x33d79eab);
         }
 
         private void drawAppContent(Canvas c, float x, float y, float w,
                                     int i, boolean selected) {
             float cx = x + w / 2;
-            radial(c, cx, y + 111, 92, selected ? 0x9bc8224c : 0x76671832,
-                    0x00341124, x + 13, y + 35, x + w - 13, y + 183);
-            fillCircle(c, cx, y + 114, 52, selected ? 0x8a5d1d35 : 0x73402332);
-            strokeCircle(c, cx, y + 114, 52,
-                    selected ? 0x9bffb5c4 : 0x5beeb2c1, 1f);
-            Drawable icon = appIcons[i];
-            if (icon != null) {
-                int l = Math.round(cx - 36), t = Math.round(y + 78);
-                icon.setBounds(l, t, l + 72, t + 72);
-                icon.draw(c);
+            radial(c, cx, y + 114, 103, selected ? 0x6bbc2048 : 0x3c731431,
+                    0x002c1020, x + 9, y + 19, x + w - 9, y + 205);
+            Bitmap art = appArt[i];
+            if (art != null) {
+                p.setShader(null);
+                p.setStyle(Paint.Style.FILL);
+                p.setAlpha(selected ? 255 : 230);
+                p.setFilterBitmap(true);
+                artBox.set(x + 13, y + 20, x + w - 13, y + 204);
+                c.drawBitmap(art, null, artBox, p);
+                p.setAlpha(255);
             } else {
-                text(c, APPS[i][2], cx, y + 129, 32, WHITE, true, true);
+                text(c, APPS[i][2], cx, y + 137, 38, WHITE, true, true);
             }
-            text(c, APPS[i][0], cx, y + 199,
+            text(c, APPS[i][0], cx, y + 229,
                     APPS[i][0].length() > 11 ? 19 : 21, WHITE, true, true);
-            text(c, "ОТКРЫТЬ ПРИЛОЖЕНИЕ", cx, y + 226, 10,
-                    selected ? 0xffff9fb3 : 0xffac8997, false, true);
         }
 
         private void drawSourceContent(Canvas c, float x, float y, float w,
@@ -313,8 +361,6 @@ public final class MainActivity extends Activity {
             text(c, "OK   ОТКРЫТЬ", 301, 631, 14, 0xffe6c7d0, false);
             fillRound(c, 490, 610, 491, 636, 0, 0x4bffc0cc);
             text(c, "MENU   НАСТРОЙКИ", 511, 631, 14, 0xffe6c7d0, false);
-            text(c, "RED LIQUID  /  02", 1170, 631, 12,
-                    0xffaa8292, true, true);
         }
 
         private void drawSettings(Canvas c) {
@@ -393,7 +439,6 @@ public final class MainActivity extends Activity {
             p.setTextSize(size);
             p.setTypeface(Typeface.create("sans-serif", medium ? Typeface.BOLD : Typeface.NORMAL));
             p.setTextAlign(centerOrRight ? Paint.Align.CENTER : Paint.Align.LEFT);
-            if (value.startsWith("RED LIQUID")) p.setTextAlign(Paint.Align.RIGHT);
             c.drawText(value, x, y, p);
             p.setTextAlign(Paint.Align.LEFT);
         }
