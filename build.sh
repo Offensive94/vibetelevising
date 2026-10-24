@@ -39,6 +39,7 @@ mkdir -p "$RP_BUILD_DIR/classes" "$RP_BUILD_DIR/dex" "$RP_BUILD_DIR/keys" "$RP_B
   "$RP_PROJECT_DIR/res/drawable/ic_launcher.xml"
 "$RP_BUILD_TOOLS/aapt2" link -o "$RP_BUILD_DIR/unsigned.apk" \
   --manifest "$RP_PROJECT_DIR/AndroidManifest.xml" \
+  -A "$RP_PROJECT_DIR/assets" \
   -I "$RP_PLATFORM" -R "$RP_BUILD_DIR/res/drawable_ic_launcher.xml.flat" \
   --min-sdk-version 28 --target-sdk-version 28
 python3 -c 'import sys, zipfile; archive = zipfile.ZipFile(sys.argv[1], "a"); archive.write(sys.argv[2], "classes.dex"); archive.close()' \
