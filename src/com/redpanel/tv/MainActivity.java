@@ -6,9 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Canvas;
-import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -140,7 +139,6 @@ public final class MainActivity extends Activity {
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF box = new RectF();
         private final Drawable[] appIcons = new Drawable[APPS.length];
-        private final Path diamond = new Path();
         private int tab = 0;
         // 0/1: tabs, 2: settings icon, 3+: content cards.
         private int focus = 3;
@@ -155,11 +153,6 @@ public final class MainActivity extends Activity {
                 try { appIcons[i] = getPackageManager().getApplicationIcon(APPS[i][1]); }
                 catch (PackageManager.NameNotFoundException ignored) { }
             }
-            diamond.moveTo(640, 136);
-            diamond.lineTo(1205, 386);
-            diamond.lineTo(640, 665);
-            diamond.lineTo(75, 386);
-            diamond.close();
             requestFocus();
         }
 
@@ -177,114 +170,215 @@ public final class MainActivity extends Activity {
             super.onDraw(canvas);
             canvas.save();
             canvas.scale(getWidth() / 1280f, getHeight() / 720f);
-            canvas.drawColor(0xff202022);
-            fillRound(canvas, 38, 30, 1242, 690, 14, 0xff080608);
-
-            canvas.save();
-            canvas.clipPath(diamond);
-            p.setShader(new RadialGradient(640, 365, 565,
-                    new int[]{0x8aaa061c, 0x806e0715, 0x0039000a},
-                    new float[]{0f, .42f, 1f}, Shader.TileMode.CLAMP));
-            canvas.drawRect(50, 120, 1230, 684, p);
-            p.setShader(null);
-            canvas.restore();
-            fillRound(canvas, 75, 60, 1205, 137, 9, 0xc345151f);
-            strokeRound(canvas, 75, 60, 1205, 137, 9, 0x55ff4d5e, 1f);
-            drawTab(canvas, "Приложения", 105, 129, 0);
-            drawTab(canvas, "Выходы", 329, 476, 1);
-            drawGear(canvas);
-
-            fillRound(canvas, 98, 194, 102, 246, 2, RED);
-            text(canvas, tab == 0 ? "ПРИЛОЖУХИ" : "АУТПУТЫ",
-                    122, 226, 30, WHITE, true);
-            text(canvas, tab == 0 ? "ПО ФАКТУ: ТОЛЬКО ВПН И ЮТУБ."
-                    : "HDMI1 - PS4.", 122, 258, 17, MUTED, false);
+            drawBackdrop(canvas);
+            drawHeader(canvas);
+            drawHero(canvas);
 
             int count = tab == 0 ? 5 : 4;
-            float width = tab == 0 ? 207 : 246;
-            float gap = tab == 0 ? 19 : 24;
-            float left = tab == 0 ? 84 : 112;
+            float width = tab == 0 ? 210 : 266;
+            float gap = tab == 0 ? 15 : 16;
             for (int i = 0; i < count; i++) {
-                float x = left + i * (width + gap);
-                drawCard(canvas, x, 314, width, 212, i);
+                drawCard(canvas, 85 + i * (width + gap), 302, width, 252, i);
             }
-            fillRound(canvas, 80, 566, 1200, 567, 0, 0x44e04455);
-            text(canvas, "◀  ▶   ВЫБОР       OK   ОТКРЫТЬ       ↑   МЕНЮ",
-                    84, 607, 14, 0xffa98990, false);
-            text(canvas, "RED PANEL  /  01", 1197, 607, 13, 0xff805b62, false, true);
-
+            drawFooter(canvas);
             if (settingsOpen) drawSettings(canvas);
             canvas.restore();
         }
 
-        private void drawTab(Canvas c, String label, float x, float right, int index) {
-            int color = tab == index ? RED : 0xffb52b38;
-            if (focus == index && !settingsOpen) fillRound(c, x - 11, 75, right + 11, 123, 7, 0x35f53649);
-            text(c, label, x, 111, 29, color, false);
-            if (tab == index) fillRound(c, x, 133, right, 136, 1, RED);
+        private void drawBackdrop(Canvas c) {
+            c.drawColor(0xff09070c);
+            radial(c, 350, 75, 650, 0x86631328, 0x00330012, 0, 0, 1280, 720);
+            radial(c, 1050, 520, 520, 0x6655172e, 0x00290019, 0, 0, 1280, 720);
+            radial(c, 650, 720, 410, 0x4a9a1c39, 0x00240013, 0, 0, 1280, 720);
+            fillRound(c, 45, 34, 46, 674, 0, 0x36f75b77);
+            fillRound(c, 1234, 34, 1235, 674, 0, 0x24f75b77);
+        }
+
+        private void drawHeader(Canvas c) {
+            glass(c, 66, 42, 1214, 130, 28, false);
+            radial(c, 103, 85, 31, 0xffff456b, 0x00ff456b, 72, 54, 134, 116);
+            strokeCircle(c, 103, 85, 24, 0x95ffc4d0, 1.4f);
+            fillCircle(c, 97, 77, 5, 0xdfffffff);
+            text(c, "RED PANEL", 142, 87, 22, WHITE, true);
+            text(c, "LIQUID EDITION", 143, 106, 10, 0xffd78396, false);
+
+            drawTab(c, "Приложения", 453, 626, 0);
+            drawTab(c, "Выходы", 640, 785, 1);
+            drawGear(c);
+        }
+
+        private void drawTab(Canvas c, String label, float left, float right, int index) {
+            boolean active = tab == index;
+            boolean focused = focus == index && !settingsOpen;
+            if (active || focused) {
+                glass(c, left, 58, right, 114, 18, focused);
+                if (active) fillRound(c, left + 19, 109, right - 19, 111, 1, 0xfffb5474);
+            }
+            text(c, label, left + 18, 94, 20,
+                    active ? WHITE : 0xffbd9da9, active);
         }
 
         private void drawGear(Canvas c) {
-            if (focus == 2 || settingsOpen) fillRound(c, 1127, 74, 1182, 124, 10, 0x40f53649);
-            p.setStyle(Paint.Style.STROKE);
-            p.setStrokeWidth(3f);
-            p.setColor(RED);
-            c.drawCircle(1154, 99, 17, p);
-            c.drawCircle(1154, 99, 6, p);
+            boolean focused = focus == 2 && !settingsOpen;
+            glass(c, 1135, 59, 1193, 113, 18, focused || settingsOpen);
+            strokeCircle(c, 1164, 86, 13, 0xfff8c4d0, 2f);
+            strokeCircle(c, 1164, 86, 4, 0xfff8c4d0, 2f);
+            p.setShader(null);
+            p.setColor(0xfff8c4d0);
+            p.setStrokeWidth(2f);
             for (int i = 0; i < 8; i++) {
-                double angle = i * Math.PI / 4;
-                float dx = (float) Math.cos(angle), dy = (float) Math.sin(angle);
-                c.drawLine(1154 + 17 * dx, 99 + 17 * dy, 1154 + 22 * dx, 99 + 22 * dy, p);
+                double a = i * Math.PI / 4;
+                float dx = (float) Math.cos(a), dy = (float) Math.sin(a);
+                c.drawLine(1164 + 16 * dx, 86 + 16 * dy,
+                        1164 + 20 * dx, 86 + 20 * dy, p);
             }
-            p.setStyle(Paint.Style.FILL);
+        }
+
+        private void drawHero(Canvas c) {
+            fillRound(c, 87, 181, 91, 242, 2, 0xffff5b78);
+            text(c, tab == 0 ? "ТВОИ ПРИЛОЖЕНИЯ" : "ИСТОЧНИКИ СИГНАЛА",
+                    111, 207, 34, WHITE, true);
+            text(c, tab == 0 ? "Всё важное — в одном касании."
+                    : "Выбери HDMI или открой эфирное ТВ.",
+                    113, 238, 17, 0xffc3a5af, false);
+            glass(c, 1001, 188, 1194, 232, 18, false);
+            fillCircle(c, 1024, 210, 4, 0xffff5b78);
+            text(c, tab == 0 ? "5 ПРИЛОЖЕНИЙ" : "4 ИСТОЧНИКА",
+                    1040, 216, 13, 0xffedd0d7, true);
         }
 
         private void drawCard(Canvas c, float x, float y, float w, float h, int i) {
             boolean selected = focus == i + 3 && !settingsOpen;
-            fillRound(c, x, y, x + w, y + h, 12, selected ? 0xff321218 : 0xd7191115);
-            strokeRound(c, x, y, x + w, y + h, 12,
-                    selected ? RED : 0x894d2b33, selected ? 2.5f : 1f);
-            fillRound(c, x + 16, y + 16, x + 20, y + 47, 2, selected ? RED : 0xff84303d);
-            fillRound(c, x + 20, y + 31, x + w - 20, y + 32, 0, 0x33ff6070);
-            if (tab == 0) {
-                Drawable icon = appIcons[i];
-                if (icon != null) {
-                    int l = Math.round(x + w / 2 - 34), t = Math.round(y + 57);
-                    icon.setBounds(l, t, l + 68, t + 68);
-                    icon.draw(c);
-                } else {
-                    fillRound(c, x + w / 2 - 35, y + 56, x + w / 2 + 35, y + 126,
-                            18, 0xff5d1825);
-                    text(c, APPS[i][2], x + w / 2, y + 102, 28, WHITE, true, true);
-                }
-                text(c, APPS[i][0], x + w / 2, y + 166,
-                        APPS[i][0].length() > 11 ? 19 : 21, WHITE, true, true);
-                text(c, "ПРИЛОЖЕНИЕ", x + w / 2, y + 190, 11,
-                        selected ? 0xffe68c98 : 0xff8a6770, false, true);
+            glass(c, x, y, x + w, y + h, 25, selected);
+            text(c, String.format(java.util.Locale.ROOT, "%02d", i + 1),
+                    x + 20, y + 34, 13, selected ? 0xffff9aae : 0xff8d7180, true);
+            if (selected) {
+                fillCircle(c, x + w - 27, y + 28, 5, 0xffff6482);
+                strokeCircle(c, x + w - 27, y + 28, 9, 0x80ff6482, 1f);
             } else {
-                String number = i < 3 ? "0" + (i + 1) : "ТВ";
-                text(c, number, x + w / 2, y + 112, 49, selected ? WHITE : 0xffd4b9bf,
-                        true, true);
-                text(c, i < 3 ? "HDMI " + (i + 1) : "Эфир / ТВ", x + w / 2,
-                        y + 166, 21, WHITE, true, true);
-                String detail = i == 3 ? "ТЕЛЕКАНАЛЫ" :
-                        hdmiIds[i] == null ? "ВХОД НЕ НАЙДЕН" :
-                        hdmiConnected[i] ? "ПОДКЛЮЧЕНО" : "НЕТ СИГНАЛА";
-                text(c, detail, x + w / 2, y + 190, 11,
-                        selected ? 0xffe68c98 : 0xff8a6770, false, true);
+                fillCircle(c, x + w - 27, y + 28, 3, 0x70f5a7b8);
             }
+            if (tab == 0) drawAppContent(c, x, y, w, i, selected);
+            else drawSourceContent(c, x, y, w, i, selected);
+            fillRound(c, x + 20, y + h - 39, x + w - 20, y + h - 38,
+                    0, selected ? 0x78ff819b : 0x33d79eab);
+        }
+
+        private void drawAppContent(Canvas c, float x, float y, float w,
+                                    int i, boolean selected) {
+            float cx = x + w / 2;
+            radial(c, cx, y + 111, 92, selected ? 0x9bc8224c : 0x76671832,
+                    0x00341124, x + 13, y + 35, x + w - 13, y + 183);
+            fillCircle(c, cx, y + 114, 52, selected ? 0x8a5d1d35 : 0x73402332);
+            strokeCircle(c, cx, y + 114, 52,
+                    selected ? 0x9bffb5c4 : 0x5beeb2c1, 1f);
+            Drawable icon = appIcons[i];
+            if (icon != null) {
+                int l = Math.round(cx - 36), t = Math.round(y + 78);
+                icon.setBounds(l, t, l + 72, t + 72);
+                icon.draw(c);
+            } else {
+                text(c, APPS[i][2], cx, y + 129, 32, WHITE, true, true);
+            }
+            text(c, APPS[i][0], cx, y + 199,
+                    APPS[i][0].length() > 11 ? 19 : 21, WHITE, true, true);
+            text(c, "ОТКРЫТЬ ПРИЛОЖЕНИЕ", cx, y + 226, 10,
+                    selected ? 0xffff9fb3 : 0xffac8997, false, true);
+        }
+
+        private void drawSourceContent(Canvas c, float x, float y, float w,
+                                       int i, boolean selected) {
+            float cx = x + w / 2;
+            radial(c, cx, y + 113, 100, selected ? 0x9ec9254d : 0x64541933,
+                    0x002c1020, x + 15, y + 36, x + w - 15, y + 187);
+            strokeRound(c, cx - 38, y + 75, cx + 38, y + 129, 11,
+                    selected ? 0xffffb4c5 : 0xffb9899a, 2f);
+            fillRound(c, cx - 18, y + 134, cx + 18, y + 137, 1,
+                    selected ? 0xffffb4c5 : 0xffb9899a);
+            text(c, i < 3 ? "0" + (i + 1) : "ТВ", cx, y + 111, 27,
+                    selected ? WHITE : 0xffd9bdc8, true, true);
+            text(c, i < 3 ? "HDMI " + (i + 1) : "Эфирное ТВ", cx, y + 195,
+                    22, WHITE, true, true);
+            String detail = i == 3 ? "ТЕЛЕКАНАЛЫ" :
+                    hdmiIds[i] == null ? "ВХОД НЕ НАЙДЕН" :
+                    hdmiConnected[i] ? "ПОДКЛЮЧЕНО" : "НЕТ СИГНАЛА";
+            text(c, detail, cx, y + 226, 11,
+                    selected ? 0xffff9fb3 : 0xffac8997, false, true);
+        }
+
+        private void drawFooter(Canvas c) {
+            glass(c, 85, 596, 1195, 651, 18, false);
+            text(c, "←  →   ВЫБОР", 110, 631, 14, 0xffe6c7d0, false);
+            fillRound(c, 280, 610, 281, 636, 0, 0x4bffc0cc);
+            text(c, "OK   ОТКРЫТЬ", 301, 631, 14, 0xffe6c7d0, false);
+            fillRound(c, 490, 610, 491, 636, 0, 0x4bffc0cc);
+            text(c, "MENU   НАСТРОЙКИ", 511, 631, 14, 0xffe6c7d0, false);
+            text(c, "RED LIQUID  /  02", 1170, 631, 12,
+                    0xffaa8292, true, true);
         }
 
         private void drawSettings(Canvas c) {
-            fillRound(c, 845, 151, 1196, 342, 12, 0xff1b1014);
-            strokeRound(c, 845, 151, 1196, 342, 12, 0xff963342, 1f);
-            text(c, "НАСТРОЙКИ", 869, 184, 16, WHITE, true);
+            c.drawColor(0x6906030a);
+            glass(c, 760, 140, 1195, 397, 28, true);
+            fillCircle(c, 797, 180, 6, 0xffff5a79);
+            text(c, "Настройки", 820, 187, 25, WHITE, true);
+            text(c, "Управление телевизором", 787, 219, 13, 0xffbc98a6, false);
             for (int i = 0; i < 2; i++) {
-                float y = 199 + i * 61;
-                if (settingsFocus == i) fillRound(c, 859, y, 1182, y + 52, 8, 0xff52212b);
+                float top = 239 + i * 65;
+                boolean selected = settingsFocus == i;
+                if (selected) glass(c, 777, top, 1178, top + 57, 16, true);
                 text(c, i == 0 ? "Настройки телевизора" : "Заводская оболочка",
-                        876, y + 34, 20, settingsFocus == i ? WHITE : MUTED, false);
+                        799, top + 36, 19, selected ? WHITE : 0xffd3b6c0, selected);
+                text(c, "›", 1137, top + 37, 26,
+                        selected ? 0xffff819c : 0xff906d7b, false);
             }
+        }
+
+        private void glass(Canvas c, float l, float t, float r, float b,
+                           float radius, boolean selected) {
+            fillRound(c, l, t + 7, r, b + 7, radius, 0x5c000000);
+            p.setStyle(Paint.Style.FILL);
+            p.setShader(new LinearGradient(l, t, r, b,
+                    selected ? new int[]{0xe0552137, 0xee2b1725, 0xf017101b}
+                            : new int[]{0xd02b1c2b, 0xe018121e, 0xea0c0b13},
+                    new float[]{0f, .52f, 1f}, Shader.TileMode.CLAMP));
+            box.set(l, t, r, b);
+            c.drawRoundRect(box, radius, radius, p);
+            p.setShader(null);
+            strokeRound(c, l + .5f, t + .5f, r - .5f, b - .5f,
+                    radius, selected ? 0xcfff829c : 0x75e7acbd, selected ? 2f : 1f);
+            fillRound(c, l + 22, t + 2, r - 22, t + 3, 1,
+                    selected ? 0xaaffc5d1 : 0x65f6c7d3);
+            if (selected) {
+                strokeRound(c, l - 3, t - 3, r + 3, b + 3,
+                        radius + 3, 0x39ff436b, 4f);
+            }
+        }
+
+        private void radial(Canvas c, float cx, float cy, float radius,
+                            int center, int edge, float l, float t, float r, float b) {
+            p.setStyle(Paint.Style.FILL);
+            p.setShader(new RadialGradient(cx, cy, radius, center, edge,
+                    Shader.TileMode.CLAMP));
+            c.drawRect(l, t, r, b, p);
+            p.setShader(null);
+        }
+
+        private void fillCircle(Canvas c, float x, float y, float radius, int color) {
+            p.setShader(null);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(color);
+            c.drawCircle(x, y, radius, p);
+        }
+
+        private void strokeCircle(Canvas c, float x, float y, float radius,
+                                  int color, float width) {
+            p.setShader(null);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(width);
+            p.setColor(color);
+            c.drawCircle(x, y, radius, p);
+            p.setStyle(Paint.Style.FILL);
         }
 
         private void text(Canvas c, String value, float x, float y, float size, int color,
@@ -298,7 +392,7 @@ public final class MainActivity extends Activity {
             p.setTextSize(size);
             p.setTypeface(Typeface.create("sans-serif", medium ? Typeface.BOLD : Typeface.NORMAL));
             p.setTextAlign(centerOrRight ? Paint.Align.CENTER : Paint.Align.LEFT);
-            if (value.startsWith("RED PANEL")) p.setTextAlign(Paint.Align.RIGHT);
+            if (value.startsWith("RED LIQUID")) p.setTextAlign(Paint.Align.RIGHT);
             c.drawText(value, x, y, p);
             p.setTextAlign(Paint.Align.LEFT);
         }
@@ -360,21 +454,21 @@ public final class MainActivity extends Activity {
             float x = event.getX() * 1280f / getWidth();
             float y = event.getY() * 720f / getHeight();
             if (settingsOpen) {
-                if (x >= 845 && x <= 1196 && y >= 199 && y <= 312) {
-                    settingsFocus = y < 260 ? 0 : 1;
+                if (x >= 777 && x <= 1178 && y >= 239 && y <= 361) {
+                    settingsFocus = y < 304 ? 0 : 1;
                     settingsOpen = false;
                     if (settingsFocus == 0) openSettings(); else openFactoryHome();
                 } else settingsOpen = false;
                 invalidate();
                 return true;
             }
-            if (y >= 60 && y <= 137) {
-                if (x >= 1127) { focus = 2; settingsOpen = true; settingsFocus = 0; }
-                else if (x >= 90 && x < 500) { tab = x < 315 ? 0 : 1; focus = 3; }
-            } else if (y >= 314 && y <= 526) {
-                float width = tab == 0 ? 207 : 246;
-                float gap = tab == 0 ? 19 : 24;
-                float left = tab == 0 ? 84 : 112;
+            if (y >= 42 && y <= 130) {
+                if (x >= 1135 && x <= 1193) { focus = 2; settingsOpen = true; settingsFocus = 0; }
+                else if (x >= 453 && x <= 785) { tab = x < 635 ? 0 : 1; focus = 3; }
+            } else if (y >= 302 && y <= 554) {
+                float width = tab == 0 ? 210 : 266;
+                float gap = tab == 0 ? 15 : 16;
+                float left = 85;
                 int index = (int) ((x - left) / (width + gap));
                 if (index >= 0 && index < (tab == 0 ? 5 : 4) &&
                         x >= left + index * (width + gap) &&
